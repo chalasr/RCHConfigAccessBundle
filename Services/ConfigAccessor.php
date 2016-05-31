@@ -9,13 +9,30 @@
  * file that was distributed with this source code.
  */
 
-namespace Dryva\EMS\Infrastructure\Bundle\ConfigAccessBundle\Services;
+namespace RCH\ConfigAccessBundle\Services;
 
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
+/**
+ * Retrieves any configuration value after compilation.
+ *
+ * Example:
+ *
+ * <code>
+ * <?php
+ *
+ * ConfigAccessor::get('framework.serializer.enabled');
+ * </code>
+ *
+ * @service rch_config_access.accessor
+ *
+ * @author Robin Chalas <robin.chalas@gmail.com>
+ */
 class ConfigAccessor
 {
     /** @var ContainerInterface */
@@ -24,29 +41,69 @@ class ConfigAccessor
     /** @var Bundle[] */
     private $bundles;
 
+    /** @var CacheItemPoolInterface */
+    private $cache;
+
     /**
-     * @param ContainerInterface $container
-     * @param Bundle[]           $bundles
+     * @param ContainerInterface     $container
+     * @param Bundle[]               $bundles
+     * @param CacheItemPoolInterface $cache
      */
-    public function __construct($container, array $bundles)
+    public function __construct($container, array $bundles, CacheItemPoolInterface $cache)
     {
         $this->container = $container;
         $this->bundles = $bundles;
+        $this->cache = $cache;
     }
 
     /**
-     * Get a config value from a given dot path.
+     * Get a config value from a given path using dot syntax.
      *
      * @param string $path
      *
-     * @return mixed $value
+     * @return mixed
      */
     public function get($path)
     {
-        $bundleConfig = $this->getBundleConfiguration($path);
-        $alias = key($bundleConfig);
+        $steps = $this->getSteps($path);
+        $bundleExtensionAlias = $steps[0];
 
-        return $this->doGet($bundleConfig[$alias], $path);
+        if (!$this->cache->hasItem($bundleExtensionAlias)) {
+            $bundleConfig = $this->getBundleConfiguration($bundleExtensionAlias);
+            $bundleConfig = $bundleConfig[$bundleExtensionAlias];
+
+            $cacheItem = $this->cache->getItem($bundleExtensionAlias)->set($bundleConfig);
+            $this->cache->save($cacheItem);
+        } else {
+            $bundleConfig = $this->cache->getItem($bundleExtensionAlias)->get();
+        }
+
+        return $this->doGet($bundleConfig, $path);
+    }
+
+    /**
+     * @param array  $config
+     * @param string $path
+     *
+     * @return mixed
+     */
+    private function doGet(array $config, $path)
+    {
+        $steps = $this->getSteps($path);
+        $result = $config;
+
+        unset($steps[0]);
+
+        foreach ($steps as $step) {
+            if (!isset($result[$step])) {
+                // TODO: "Did you mean?" feature instead
+                throw new \LogicException(sprintf('Unable to find configuration value for path "%s"', $path));
+            }
+
+            $result = $result[$step];
+        }
+
+        return $result;
     }
 
     /**
@@ -56,15 +113,8 @@ class ConfigAccessor
      *
      * @return array
      */
-    private function getBundleConfiguration($path)
+    private function getBundleConfiguration($alias)
     {
-        $paths = explode('.', $path);
-
-        if (!isset($paths[0]) || null === $alias = $paths[0]) {
-            throw new InvalidArgumentException(); // InvalidPath (null)
-        }
-
-        // TODO: @uses ConfigCachePass: ['path.to.config' => 'value'] (or retrieve if exists, )
         $container = $this->getCompiledContainer();
         $extension = $this->findBundleExtension($alias);
         $configs = $container->getExtensionConfig($extension->getAlias());
@@ -79,9 +129,9 @@ class ConfigAccessor
     /**
      * Retrieves a bundle extension from a given alias.
      *
-     * @param string $alias The extension alias
+     * @param string $alias The bundle extension alias
      *
-     * @return Bundle[]
+     * @return ExtensionInterface
      */
     private function findBundleExtension($alias)
     {
@@ -125,27 +175,12 @@ class ConfigAccessor
     }
 
     /**
-     * @param array  $array
-     * @param string $path
-     * @param mixed  $newValue
+     * @param string $path Configuration path (dot syntax)
      *
-     * @return mixed
+     * @return array The configuration levels to iterate over
      */
-    private function doGet(array &$array, $path)
+    private function getSteps($path)
     {
-        $steps = explode('.', $path);
-        $result = $array;
-
-        unset($steps[0]);
-
-        foreach ($steps as $step) {
-            if (!isset($result[$step])) {
-                throw new \LogicException(sprintf('Unable to find configuration value for path "%s"', $path));
-            }
-
-            $result = $result[$step];
-        }
-
-        return $result;
+        return explode('.', $path);
     }
 }

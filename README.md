@@ -50,23 +50,40 @@ Usage
 
 $accessor = $this->container->get('rch.config_access.accessor');
 
-$pattern = $accessor->get('security.firewalls.main.pattern');
-$accessControls = $accessor->get('security.access_controls');
-
+$fullSecurity = $accessor->get('security');
+$routerHttpPort = $accessor->get('framework.router.http_port');
+// ...
 ```
 
-#### Inject them into your services using the expression-language component.
+#### Inject them into your services through expressions.
+
+```php
+<?php
+
+namespace AppBundle\Services;
+
+class FooManager 
+{
+    public function __construct(array $security)
+    {
+        $this->security = $security;
+    }
+    
+    // ...
+}
+```
 
 ```yaml
 services:
     foo_manager:
-        arguments: [ '@=service("rch_config_access.accessor").get("security.firewalls.main.pattern")' ]`
+        arguments: 
+            - '@=service("rch_config_access.accessor").get("security")'
 ```
 
 Contributing
 ------------
 
-This bundle need features.
+This project needs features.
 
 Please follow [the contribution guidelines](CONTRIBUTING.md).
 
