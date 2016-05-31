@@ -15,16 +15,20 @@
         "php": ">= 5.4.0",
         "symfony/http-kernel": "~2.8|~3.0",
         "symfony/dependency-injection": "~2.8|~3.0",
-        "symfony/config": "~2.8|~3.0"
+        "symfony/config": "~2.8|~3.0",
+        "symfony/cache": "^3.1"
     },
     "require-dev": {
-        "fabpot/php-cs-fixer": "~2.0@dev"
+        "friendsofphp/php-cs-fixer": "~2.0@dev",
+        "phpunit/phpunit": "^4.1|^5.0"
     },
     "suggest": {
         "symfony/expression-language": "For injecting configuration values as service arguments"
     },
     "autoload": {
-        "psr-4": { "RCH\\ConfigAccessBundle\\": "" }
+        "psr-4": {
+            "RCH\\ConfigAccessBundle\\": ""
+        }
     },
     "extra": {
         "branch-alias": {
