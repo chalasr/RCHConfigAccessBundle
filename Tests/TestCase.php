@@ -22,7 +22,7 @@ abstract class TestCase extends WebTestCase
     /**
      * @var ContainerInterface
      */
-    protected $container;
+    protected static $kernel;
 
     /**
      * {@inheritdoc}
@@ -32,10 +32,10 @@ abstract class TestCase extends WebTestCase
         $fs = new Filesystem();
         $fs->remove(sys_get_temp_dir().'/RCHConfigAccessBundle/');
 
-        $kernel = $this->createKernel();
-        $kernel->boot();
+        static::$kernel = $this->createKernel();
+        static::$kernel->boot();
 
-        $this->container = $kernel->getContainer();
+        $this->container = static::$kernel->getContainer();
     }
 
     /**
@@ -51,6 +51,8 @@ abstract class TestCase extends WebTestCase
      */
     protected function tearDown()
     {
+        @rmdir(static::$kernel->getCacheDir());
+        @rmdir(static::$kernel->getLogDir());
         static::$kernel = null;
     }
 }

@@ -18,10 +18,38 @@ use RCH\ConfigAccessBundle\Tests\TestCase;
  */
 class ConfigAccessorTest extends TestCase
 {
+    protected function setUp()
+    {
+        parent::setUp();
+
+        $this->accessor = $this->container->get('rch_config_access.accessor');
+    }
+
     public function testGet()
     {
-        $accessor = $this->container->get('rch_config_access.accessor');
+        $frameworkConfig = $this->accessor->get('framework');
 
-        $this->assertSame('en', $accessor->get('framework.default_locale'));
+        $this->assertSame('en', $frameworkConfig['default_locale']);
+        $this->assertArrayHasKey('serializer', $frameworkConfig);
+        $this->assertArrayHasKey('validation', $frameworkConfig);
+        $this->assertArrayHasKey('property_access', $frameworkConfig);
+    }
+
+    /**
+     * @expectedException        \LogicException
+     * @expectedExceptionMessage Did you mean "framework.default_locale"?
+     */
+    public function testGetUnexactPath()
+    {
+        $this->accessor->get('framework.default_loal');
+    }
+
+    /**
+     * @expectedException        \LogicException
+     * @expectedExceptionMessage Did you mean "framework.default_locale"?
+     */
+    public function testGetUnexactBundleAlias()
+    {
+        $this->accessor->get('frameorf.default_locale');
     }
 }

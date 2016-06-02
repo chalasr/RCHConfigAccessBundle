@@ -19,17 +19,22 @@ use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
 /**
- * Retrieves any configuration value after compilation.
+ * Retrieves any configuration value.
  *
- * Example:
+ * This class aims to retrieve the configuration of any bundle, totally or
+ * partially, from any level (node).
  *
- * <code>
- * <?php
+ * To do that, it manually compiles the Symfony DependencyInjection
+ * container, meaning that any configuration will be retrieved after being
+ * finalized/merged/proceeded.
  *
- * ConfigAccessor::get('framework.serializer.enabled');
- * </code>
+ * For performances purpose, configuration dumps are put in cache through
+ * the Symfony Cache component (default with the FileSystemAdapter).
+ * Each cached dump is automatically rebuilt once it isn't available anymore,.
  *
- * @service rch_config_access.accessor
+ * @example https://github.com/chalasr/RCHConfigAccessBundle/tree/master/README.md
+ *
+ * @link https://github.com/chalasr/RCHConfigAccessBundle
  *
  * @author Robin Chalas <robin.chalas@gmail.com>
  */
@@ -57,7 +62,13 @@ class ConfigAccessor
     }
 
     /**
-     * Get a config value from a given path using dot syntax.
+     * Gets a configuration value by its path (dot syntax).
+     *
+     * <code>
+     * $container
+     * 		->get('rch_config_access.accessor')
+     * 		->get('framework.serializer.enabled');
+     * </code>
      *
      * @param string $path
      *
@@ -65,23 +76,12 @@ class ConfigAccessor
      */
     public function get($path)
     {
-        $steps = $this->getSteps($path);
-        $bundleExtensionAlias = $steps[0];
-
-        if (!$this->cache->hasItem($bundleExtensionAlias)) {
-            $bundleConfig = $this->getBundleConfiguration($bundleExtensionAlias);
-            $bundleConfig = $bundleConfig[$bundleExtensionAlias];
-
-            $cacheItem = $this->cache->getItem($bundleExtensionAlias)->set($bundleConfig);
-            $this->cache->save($cacheItem);
-        } else {
-            $bundleConfig = $this->cache->getItem($bundleExtensionAlias)->get();
-        }
-
-        return $this->doGet($bundleConfig, $path);
+        return $this->doGet($this->getBundleConfiguration($path), $path);
     }
 
     /**
+     *
+     *
      * @param array  $config
      * @param string $path
      *
@@ -89,14 +89,13 @@ class ConfigAccessor
      */
     private function doGet(array $config, $path)
     {
-        $steps = $this->getSteps($path);
         $result = $config;
+        $steps = $this->getSteps($path);
 
         unset($steps[0]);
 
         foreach ($steps as $step) {
             if (!array_key_exists($step, $result)) {
-
                 throw $this->didYouMean($step, array_keys($result), $path);
             }
 
@@ -107,33 +106,34 @@ class ConfigAccessor
     }
 
     /**
-     * Retrieves a bundle extension from a given alias.
+     * Gets the configuration for a given bundle.
      *
      * @param string $alias The bundle extension alias
      *
-     * @return ExtensionInterface
+     * @return array
      */
-    private function findBundleExtension($alias)
+    private function getBundleConfiguration($path)
     {
-        $minScore = INF;
+        $steps = $this->getSteps($path);
+        $extensionAlias = $steps[0];
 
-        foreach ($this->bundles as $bundle) {
-            if (!$extension = $bundle->getContainerExtension()) {
-                continue;
-            }
+        $cachedDump = $this->cache->getItem($extensionAlias);
 
-            if ($alias === $extension->getAlias()) {
-                return $extension;
-            }
+        if ($cachedDump->isHit()) {
+            return $cachedDump->get();
         }
 
-        $aliasMap = array_map(function(Bundle $bundle) {
-            $extension = $bundle->getContainerExtension();
+        $container = $this->getCompiledContainer();
+        $extension = $this->findBundleExtension($path);
 
-            return $extension ? $extension->getAlias() : null;
-        }, $this->bundles);
+        $configs = $container->getExtensionConfig($extensionAlias);
+        $configuration = $extension->getConfiguration($configs, $container);
+        $resolvedConfigs = $container->getParameterBag()->resolveValue($configs);
 
-        throw $this->didYouMean($alias, array_filter($aliasMap));
+        $cachedDump->set((new Processor)->processConfiguration($configuration, $resolvedConfigs));
+        $this->cache->save($cachedDump);
+
+        return $cachedDump->get();
     }
 
     /**
@@ -162,9 +162,9 @@ class ConfigAccessor
             }
         }
 
-        $notFoundMessage = sprintf('Unable to find configuration for "%s"', $originalNeed);
+        $notFoundMessage = sprintf('Unable to find configuration for "%s".', $originalNeed);
 
-        if (array_key_exists($guess) && $minScore < 3) {
+        if (isset($guess) && $minScore < 3) {
             return new \LogicException(
                 sprintf("%s\n\nDid you mean \"%s\"?\n\n", $notFoundMessage, str_replace($search, $guess, $originalNeed))
             );
@@ -172,34 +172,41 @@ class ConfigAccessor
 
         return new \LogicException(
             sprintf(
-                "%s\n\nPossible values are:\n%s",
-                $notFoundMessage,
+                "Unable to find configuration for \"%s\".\n\nPossible values are:\n%s",
+                $originalNeed,
                 implode(PHP_EOL, array_map(function ($match) { return sprintf('- %s', $match); }, $possibleMatches))
             )
         );
     }
 
     /**
-     * Gets the configuration for a given bundle.
+     * Retrieves a bundle extension from a given alias.
      *
      * @param string $alias The bundle extension alias
      *
-     * @return array
+     * @return ExtensionInterface
      */
-    private function getBundleConfiguration($alias)
+    private function findBundleExtension($path)
     {
-        $container = $this->getCompiledContainer();
-        $extension = $this->findBundleExtension($alias);
-        $configs = $container->getExtensionConfig($extension->getAlias());
-        $configuration = $extension->getConfiguration($configs, $container);
-        $configs = $container->getParameterBag()->resolveValue($configs);
+        $minScore = INF;
+        $alias = $this->getExtensionAlias($path);
 
-        $processor = new Processor();
+        foreach ($this->bundles as $bundle) {
+            if (!$extension = $bundle->getContainerExtension()) {
+                continue;
+            }
 
-        return [$alias => $processor->processConfiguration($configuration, $configs)];
+            if ($alias === $extension->getAlias()) {
+                return $extension;
+            }
+        }
+
+        throw $this->didYouMean($alias, $this->getAliasMap(), $path);
     }
 
     /**
+     * Gets the container after compilation.
+     *
      * @return ContainerBuilder
      */
     private function getCompiledContainer()
@@ -224,12 +231,48 @@ class ConfigAccessor
     }
 
     /**
-     * Gets an array of ordered levels corresponding to the nodes
-     * of the bundle configuration.
+     * Gets all bundle extensions aliases.
      *
-     * @param string $path Configuration path (dot syntax)
+     * @return string[] An array of aliases
+     */
+    private function getAliasMap()
+    {
+        $cachedMap = $this->cache->getItem('aliasMap');
+
+        if (!$cachedMap->isHit()) {
+            $cachedMap->set(array_map(function(Bundle $bundle) {
+                if ($extension = $bundle->getContainerExtension()) {
+                    return $extension->getAlias();
+                }
+            }, $this->bundles));
+
+            $this->cache->save($cachedMap);
+        }
+
+        return $cachedMap->get();
+    }
+
+    /**
+     * Gets a bundle extension alias from a given path.
      *
-     * @return array The configuration levels to iterate over
+     * @param string $path The configuration path (dot syntax)
+     *
+     * @return
+     */
+    private function getExtensionAlias($path)
+    {
+        $steps = $this->getSteps($path);
+
+        return $steps[0];
+    }
+
+    /**
+     * Gets an array of ordered levels corresponding to the nodes of
+     * the bundle configuration.
+     *
+     * @param string $path The configuration path (dot syntax)
+     *
+     * @return array
      */
     private function getSteps($path)
     {

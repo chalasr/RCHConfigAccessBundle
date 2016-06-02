@@ -1,7 +1,7 @@
 RCHConfigAccessBundle
 =====================
 
-Retrieve configuration values from any container-aware context using dot syntax.
+Retrieve final configuration values from any container-aware context.
 
 Why?
 ----
