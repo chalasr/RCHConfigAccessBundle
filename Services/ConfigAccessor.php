@@ -45,9 +45,9 @@ class ConfigAccessor
     private $cache;
 
     /**
-     * @param ContainerInterface     $container
-     * @param Bundle[]               $bundles
-     * @param CacheItemPoolInterface $cache
+     * @param ContainerInterface      $container
+     * @param Bundle[]                $bundles
+     * @param CacheItemPoolInterface  $cache
      */
     public function __construct($container, array $bundles, CacheItemPoolInterface $cache)
     {
@@ -95,15 +95,88 @@ class ConfigAccessor
         unset($steps[0]);
 
         foreach ($steps as $step) {
-            if (!isset($result[$step])) {
-                // TODO: "Did you mean?" feature instead
-                throw new \LogicException(sprintf('Unable to find configuration value for path "%s"', $path));
+            if (!array_key_exists($step, $result)) {
+
+                throw $this->didYouMean($step, array_keys($result), $path);
             }
 
             $result = $result[$step];
         }
 
         return $result;
+    }
+
+    /**
+     * Retrieves a bundle extension from a given alias.
+     *
+     * @param string $alias The bundle extension alias
+     *
+     * @return ExtensionInterface
+     */
+    private function findBundleExtension($alias)
+    {
+        $minScore = INF;
+
+        foreach ($this->bundles as $bundle) {
+            if (!$extension = $bundle->getContainerExtension()) {
+                continue;
+            }
+
+            if ($alias === $extension->getAlias()) {
+                return $extension;
+            }
+        }
+
+        $aliasMap = array_map(function(Bundle $bundle) {
+            $extension = $bundle->getContainerExtension();
+
+            return $extension ? $extension->getAlias() : null;
+        }, $this->bundles);
+
+        throw $this->didYouMean($alias, array_filter($aliasMap));
+    }
+
+    /**
+     * Throws a "Did you mean ...?" exception.
+     *
+     * @param string      $search
+     * @param array       $possibleMatches
+     * @param string|null $originalNeed
+     *
+     * @return \LogicException
+     */
+    private function didYouMean($search, array $possibleMatches, $originalNeed = null)
+    {
+        $minScore = INF;
+
+        if (!$originalNeed) {
+            $originalNeed = $search;
+        }
+
+        foreach ($possibleMatches as $key => $sameLevelStep) {
+            $distance = levenshtein($search, $sameLevelStep);
+
+            if ($distance < $minScore) {
+                $guess = $sameLevelStep;
+                $minScore = $distance;
+            }
+        }
+
+        $notFoundMessage = sprintf('Unable to find configuration for "%s"', $originalNeed);
+
+        if (array_key_exists($guess) && $minScore < 3) {
+            return new \LogicException(
+                sprintf("%s\n\nDid you mean \"%s\"?\n\n", $notFoundMessage, str_replace($search, $guess, $originalNeed))
+            );
+        }
+
+        return new \LogicException(
+            sprintf(
+                "%s\n\nPossible values are:\n%s",
+                $notFoundMessage,
+                implode(PHP_EOL, array_map(function ($match) { return sprintf('- %s', $match); }, $possibleMatches))
+            )
+        );
     }
 
     /**
@@ -124,30 +197,6 @@ class ConfigAccessor
         $processor = new Processor();
 
         return [$alias => $processor->processConfiguration($configuration, $configs)];
-    }
-
-    /**
-     * Retrieves a bundle extension from a given alias.
-     *
-     * @param string $alias The bundle extension alias
-     *
-     * @return ExtensionInterface
-     */
-    private function findBundleExtension($alias)
-    {
-        foreach ($this->bundles as $bundle) {
-            $extension = $bundle->getContainerExtension();
-
-            if ($extension && ($alias === $extension->getAlias() || $alias === $bundle->getName())) {
-                break;
-            }
-        }
-
-        if (!$extension) {
-            throw new \InvalidArgumentException(sprintf('No configuration found for alias "%s"', $alias));
-        }
-
-        return $extension;
     }
 
     /**
@@ -175,6 +224,9 @@ class ConfigAccessor
     }
 
     /**
+     * Gets an array of ordered levels corresponding to the nodes
+     * of the bundle configuration.
+     *
      * @param string $path Configuration path (dot syntax)
      *
      * @return array The configuration levels to iterate over
