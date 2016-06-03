@@ -12,7 +12,7 @@
 namespace RCH\ConfigAccessBundle\Services;
 
 use Psr\Cache\CacheItemPoolInterface;
-use Symfony\Component\Config\Definition\Processor;
+use RCH\ConfigAccessBundle\Config\Dump;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
@@ -130,10 +130,10 @@ class ConfigAccessor
         $configuration = $extension->getConfiguration($configs, $container);
         $resolvedConfigs = $container->getParameterBag()->resolveValue($configs);
 
-        $cachedDump->set((new Processor)->processConfiguration($configuration, $resolvedConfigs));
+        $cachedDump->set(Dump::fromTree($configuration, $resolvedConfigs));
         $this->cache->save($cachedDump);
 
-        return $cachedDump->get();
+        return $cachedDump->get()->toArray();
     }
 
     /**
