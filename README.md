@@ -56,29 +56,50 @@ rch_config_access:
 Usage
 -----
 
-#### Retrieve configuration value by dot path
+#### Get configuration values
 
 ```php
 <?php
 
 $accessor = $this->container->get('rch.config_access.accessor');
 
-// Security
-$securityConfig = $accessor->get('security');
-
-// Current firewall
-foreach ($accessor->get('security.firewalls') as $name => $mapping) {
+// Find the current firewall
+foreach ($accessor->get('security.firewalls') as $firewall => $mapping) {
     if (preg_match(sprintf('{%s}', $mapping['pattern']), $request->attributes->get('_route'))) {
-        printf('Current firewall: %s', $name);
+        // $name is the current firewall
+        break;
     }
 }
 
-// Serializer
-$serializerConfig = $accessor->get('framework.serializer');
-$isEnabled = $serializerConfig->enabled
+$accessor->get('security');
+// array('encoders' => array(...), 'providers' => array(...), ...)
+
+$accessor->get('framework.serializer');
+// array('enabled' => true, ...)
+
+$accessor->get('framework.serializer.enabled');
+// true
+
+$accessor->get('stof_doctrine_extensions.uploadable');
+// array('orm' => array(...), 'uploadable' => array(...), ...)
+
+$accessor->get('lexik_jwt_authentication.encoder.service'); 
+// 'lexik_jwt_authentication.encoder.default'
+
+$accessor->get('frameorf.default_locale'); 
+$accessor->get('framework.default_loal');
+
+// Did you mean "framework.default_locale"?
 ```
 
-#### Inject them into your services through expressions.
+#### Inject them into your services
+
+```yaml
+services:
+    foo_manager:
+        arguments: 
+            - '@=service("rch_config_access.accessor").get("security")'
+```
 
 ```php
 <?php
@@ -96,23 +117,15 @@ class FooManager
 }
 ```
 
-```yaml
-services:
-    foo_manager:
-        arguments: 
-            - '@=service("rch_config_access.accessor").get("security")'
-```
 
 Contributing
 ------------
 
-This project needs features.
-
-Please follow [the contribution guidelines](CONTRIBUTING.md).
+[Guidelines](CONTRIBUTING.md)
 
 License
 -------
 
 The code is released under the MIT license.
 
-For the whole copyright, see the [LICENSE](LICENSE) file.
+For the whole copyright, see the distributed [LICENSE](LICENSE) file.
