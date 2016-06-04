@@ -11,11 +11,9 @@
 
 namespace RCH\ConfigAccessBundle\Tests\Services;
 
-use RCH\ConfigAccessBundle\Tests\TestCase;
-use RCH\ConfigAccessBundle\DependencyInjection\Configuration;
 use RCH\ConfigAccessBundle\Config\Dump;
-use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
+use Symfony\Component\Config\Definition\ConfigurationInterface;
 
 /**
  * Tests the Dump collection class.

@@ -32,8 +32,6 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  * the Symfony Cache component (default with the FileSystemAdapter).
  * Each cached dump is automatically rebuilt once it isn't available anymore.
  *
- * @package @rch_config_access.accessor
- *
  * @example https://github.com/chalasr/RCHConfigAccessBundle/tree/master/README.md
  *
  * @link https://github.com/chalasr/RCHConfigAccessBundle
@@ -92,9 +90,7 @@ class ConfigAccessor
     private function doGet(array $config, $path)
     {
         $result = $config;
-        $steps = $this->getSteps($path);
-
-        unset($steps[0]);
+        $steps = $this->getSteps($path, true);
 
         foreach ($steps as $step) {
             if (!\array_key_exists($step, $result)) {
@@ -116,9 +112,7 @@ class ConfigAccessor
      */
     private function getBundleConfiguration($path)
     {
-        $steps = $this->getSteps($path);
-        $extensionAlias = $steps[0];
-
+        $extensionAlias = $this->getExtensionAlias($path);
         $cachedDump = $this->cache->getItem($extensionAlias);
 
         if ($cachedDump->isHit()) {
@@ -164,23 +158,20 @@ class ConfigAccessor
             }
         }
 
-        $notFoundMessage = sprintf('Unable to find configuration for "%s".', $originalNeed);
+        $message = sprintf('Unable to find configuration for "%s".', $originalNeed);
 
         if (isset($guess) && $minScore < 3) {
-            return new \LogicException(
-                \sprintf("%s\n\nDid you mean \"%s\"?\n\n", $notFoundMessage, \str_replace($search, $guess, $originalNeed))
-            );
-        }
-
-        return new \LogicException(
-            \sprintf(
-                "Unable to find configuration for \"%s\".\n\nPossible values are:\n%s",
-                $originalNeed,
+            $message .= \sprintf("\n\nDid you mean \"%s\"?\n\n", \str_replace($search, $guess, $originalNeed));
+        } else {
+            $message .= \sprintf(
+                "\n\nPossible values are:\n%s",
                 \implode(PHP_EOL, \array_map(function ($match) {
                     return \sprintf('- %s', $match);
                 }, $possibleMatches))
-            )
-        );
+            );
+        }
+
+        return new \LogicException($message);
     }
 
     /**
@@ -204,7 +195,7 @@ class ConfigAccessor
             }
         }
 
-        throw $this->didYouMean($alias, $this->getAliasMap(), $path);
+        throw $this->didYouMean($alias, array_filter($this->getAliasMap()), $path);
     }
 
     /**
@@ -277,8 +268,14 @@ class ConfigAccessor
      *
      * @return array
      */
-    private function getSteps($path)
+    private function getSteps($path, $excludeAlias = false)
     {
-        return \explode('.', $path);
+        $steps = \explode('.', $path);
+
+        if ($excludeAlias) {
+            unset($steps[0]);
+        }
+
+        return $steps;
     }
 }
