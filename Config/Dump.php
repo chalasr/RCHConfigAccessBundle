@@ -12,23 +12,23 @@
 namespace RCH\ConfigAccessBundle\Config;
 
 use Doctrine\Common\Collections\ArrayCollection;
-use Symfony\Component\Yaml\Yaml;
-use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
+use Symfony\Component\Config\Definition\Processor;
+use Symfony\Component\Yaml\Yaml;
 
 class Dump extends ArrayCollection
 {
     /**
      * Creates a dump from a Config tree.
      *
-     * @param  NodeInterface $tree
-     * @param  array         $configs
+     * @param NodeInterface $tree
+     * @param array         $configs
      *
      * @return Dump
      */
     public static function fromTree(ConfigurationInterface $tree, array $configs)
     {
-        $processor = new Processor;
+        $processor = new Processor();
 
         return new self($processor->processConfiguration($tree, $configs));
     }

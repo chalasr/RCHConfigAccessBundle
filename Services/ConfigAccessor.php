@@ -50,9 +50,9 @@ class ConfigAccessor
     private $cache;
 
     /**
-     * @param ContainerInterface      $container
-     * @param Bundle[]                $bundles
-     * @param CacheItemPoolInterface  $cache
+     * @param ContainerInterface     $container
+     * @param Bundle[]               $bundles
+     * @param CacheItemPoolInterface $cache
      */
     public function __construct($container, array $bundles, CacheItemPoolInterface $cache)
     {
@@ -80,7 +80,7 @@ class ConfigAccessor
     }
 
     /**
-     *
+     * Iterates over path's steps then gets the expected value.
      *
      * @param array  $config
      * @param string $path
@@ -95,8 +95,8 @@ class ConfigAccessor
         unset($steps[0]);
 
         foreach ($steps as $step) {
-            if (!array_key_exists($step, $result)) {
-                throw $this->didYouMean($step, array_keys($result), $path);
+            if (!\array_key_exists($step, $result)) {
+                throw $this->didYouMean($step, \array_keys($result), $path);
             }
 
             $result = $result[$step];
@@ -153,11 +153,11 @@ class ConfigAccessor
             $originalNeed = $search;
         }
 
-        foreach ($possibleMatches as $key => $sameLevelStep) {
-            $distance = levenshtein($search, $sameLevelStep);
+        foreach ($possibleMatches as $try) {
+            $distance = \levenshtein($search, $try);
 
             if ($distance < $minScore) {
-                $guess = $sameLevelStep;
+                $guess = $try;
                 $minScore = $distance;
             }
         }
@@ -166,15 +166,17 @@ class ConfigAccessor
 
         if (isset($guess) && $minScore < 3) {
             return new \LogicException(
-                sprintf("%s\n\nDid you mean \"%s\"?\n\n", $notFoundMessage, str_replace($search, $guess, $originalNeed))
+                \sprintf("%s\n\nDid you mean \"%s\"?\n\n", $notFoundMessage, \str_replace($search, $guess, $originalNeed))
             );
         }
 
         return new \LogicException(
-            sprintf(
+            \sprintf(
                 "Unable to find configuration for \"%s\".\n\nPossible values are:\n%s",
                 $originalNeed,
-                implode(PHP_EOL, array_map(function ($match) { return sprintf('- %s', $match); }, $possibleMatches))
+                \implode(PHP_EOL, \array_map(function ($match) {
+                    return \sprintf('- %s', $match);
+                }, $possibleMatches))
             )
         );
     }
@@ -188,7 +190,6 @@ class ConfigAccessor
      */
     private function findBundleExtension($path)
     {
-        $minScore = INF;
         $alias = $this->getExtensionAlias($path);
 
         foreach ($this->bundles as $bundle) {
@@ -205,7 +206,7 @@ class ConfigAccessor
     }
 
     /**
-     * Gets the container after compilation.
+     * Gets the container after compilate it.
      *
      * @return ContainerBuilder
      */
@@ -233,14 +234,14 @@ class ConfigAccessor
     /**
      * Gets all bundle extensions aliases.
      *
-     * @return string[] An array of aliases
+     * @return string[]
      */
     private function getAliasMap()
     {
         $cachedMap = $this->cache->getItem('aliasMap');
 
         if (!$cachedMap->isHit()) {
-            $cachedMap->set(array_map(function(Bundle $bundle) {
+            $cachedMap->set(\array_map(function (Bundle $bundle) {
                 if ($extension = $bundle->getContainerExtension()) {
                     return $extension->getAlias();
                 }
@@ -257,7 +258,7 @@ class ConfigAccessor
      *
      * @param string $path The configuration path (dot syntax)
      *
-     * @return
+     * @return string
      */
     private function getExtensionAlias($path)
     {
@@ -276,6 +277,6 @@ class ConfigAccessor
      */
     private function getSteps($path)
     {
-        return explode('.', $path);
+        return \explode('.', $path);
     }
 }
