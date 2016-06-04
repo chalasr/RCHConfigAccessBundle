@@ -30,7 +30,9 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  *
  * For performances purpose, configuration dumps are put in cache through
  * the Symfony Cache component (default with the FileSystemAdapter).
- * Each cached dump is automatically rebuilt once it isn't available anymore,.
+ * Each cached dump is automatically rebuilt once it isn't available anymore.
+ *
+ * @package @rch_config_access.accessor
  *
  * @example https://github.com/chalasr/RCHConfigAccessBundle/tree/master/README.md
  *
@@ -120,7 +122,7 @@ class ConfigAccessor
         $cachedDump = $this->cache->getItem($extensionAlias);
 
         if ($cachedDump->isHit()) {
-            return $cachedDump->get();
+            return $cachedDump->get()->toArray();
         }
 
         $container = $this->getCompiledContainer();

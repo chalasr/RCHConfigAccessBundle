@@ -16,7 +16,6 @@ This bundle is intended to solve this problem.
 Related issues:
 - [_Symfony2 accessing variables defined in config?_](http://stackoverflow.com/questions/8544392/symfony2-accessing-variables-defined-in-config-yml-and-config-yml#answer-22603488) (Stack Overflow)
 - [_How do I read configuration settings from symfony2 config?_](http://stackoverflow.com/questions/4821692/how-do-i-read-configuration-settings-from-symfony2-config-yml#answer-22599416) (Stack Overflow)
-- [Symfony2 find matching firewall based on route name](http://stackoverflow.com/questions/29285514/symfony-2-find-matching-firewall-based-on-route-name)
 
 Installation
 ------------
@@ -116,7 +115,6 @@ class FooManager
     // ...
 }
 ```
-
 
 Contributing
 ------------

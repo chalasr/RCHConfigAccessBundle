@@ -53,6 +53,7 @@ abstract class TestCase extends WebTestCase
     {
         @rmdir(static::$kernel->getCacheDir());
         @rmdir(static::$kernel->getLogDir());
+        
         static::$kernel = null;
     }
 }

@@ -14,6 +14,8 @@ namespace RCH\ConfigAccessBundle\Tests\Services;
 use RCH\ConfigAccessBundle\Tests\TestCase;
 
 /**
+ * Tests the ConfigAccessor (main class of this bundle).
+ *
  * @author Robin Chalas <robin.chalas@gmail.com>
  */
 class ConfigAccessorTest extends TestCase
