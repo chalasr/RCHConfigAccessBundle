@@ -12,7 +12,6 @@
 namespace RCH\ConfigAccessBundle\Tests;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * TestCase.
@@ -29,9 +28,6 @@ abstract class TestCase extends WebTestCase
      */
     protected function setUp()
     {
-        $fs = new Filesystem();
-        $fs->remove(sys_get_temp_dir().'/RCHConfigAccessBundle/');
-
         static::$kernel = $this->createKernel();
         static::$kernel->boot();
 
@@ -53,6 +49,7 @@ abstract class TestCase extends WebTestCase
     {
         @rmdir(static::$kernel->getCacheDir());
         @rmdir(static::$kernel->getLogDir());
+
         static::$kernel = null;
     }
 }

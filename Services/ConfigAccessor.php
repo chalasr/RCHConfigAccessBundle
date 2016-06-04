@@ -12,7 +12,7 @@
 namespace RCH\ConfigAccessBundle\Services;
 
 use Psr\Cache\CacheItemPoolInterface;
-use Symfony\Component\Config\Definition\Processor;
+use RCH\ConfigAccessBundle\Config\Dump;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
@@ -30,7 +30,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  *
  * For performances purpose, configuration dumps are put in cache through
  * the Symfony Cache component (default with the FileSystemAdapter).
- * Each cached dump is automatically rebuilt once it isn't available anymore,.
+ * Each cached dump is automatically rebuilt once it isn't available anymore.
  *
  * @example https://github.com/chalasr/RCHConfigAccessBundle/tree/master/README.md
  *
@@ -50,9 +50,9 @@ class ConfigAccessor
     private $cache;
 
     /**
-     * @param ContainerInterface      $container
-     * @param Bundle[]                $bundles
-     * @param CacheItemPoolInterface  $cache
+     * @param ContainerInterface     $container
+     * @param Bundle[]               $bundles
+     * @param CacheItemPoolInterface $cache
      */
     public function __construct($container, array $bundles, CacheItemPoolInterface $cache)
     {
@@ -80,7 +80,7 @@ class ConfigAccessor
     }
 
     /**
-     *
+     * Iterates over path's steps then gets the expected value.
      *
      * @param array  $config
      * @param string $path
@@ -90,13 +90,11 @@ class ConfigAccessor
     private function doGet(array $config, $path)
     {
         $result = $config;
-        $steps = $this->getSteps($path);
-
-        unset($steps[0]);
+        $steps = $this->getSteps($path, true);
 
         foreach ($steps as $step) {
-            if (!array_key_exists($step, $result)) {
-                throw $this->didYouMean($step, array_keys($result), $path);
+            if (!\array_key_exists($step, $result)) {
+                throw $this->didYouMean($step, \array_keys($result), $path);
             }
 
             $result = $result[$step];
@@ -114,13 +112,11 @@ class ConfigAccessor
      */
     private function getBundleConfiguration($path)
     {
-        $steps = $this->getSteps($path);
-        $extensionAlias = $steps[0];
-
+        $extensionAlias = $this->getExtensionAlias($path);
         $cachedDump = $this->cache->getItem($extensionAlias);
 
         if ($cachedDump->isHit()) {
-            return $cachedDump->get();
+            return $cachedDump->get()->toArray();
         }
 
         $container = $this->getCompiledContainer();
@@ -130,10 +126,10 @@ class ConfigAccessor
         $configuration = $extension->getConfiguration($configs, $container);
         $resolvedConfigs = $container->getParameterBag()->resolveValue($configs);
 
-        $cachedDump->set((new Processor)->processConfiguration($configuration, $resolvedConfigs));
+        $cachedDump->set(Dump::fromTree($configuration, $resolvedConfigs));
         $this->cache->save($cachedDump);
 
-        return $cachedDump->get();
+        return $cachedDump->get()->toArray();
     }
 
     /**
@@ -153,30 +149,29 @@ class ConfigAccessor
             $originalNeed = $search;
         }
 
-        foreach ($possibleMatches as $key => $sameLevelStep) {
-            $distance = levenshtein($search, $sameLevelStep);
+        foreach ($possibleMatches as $try) {
+            $distance = \levenshtein($search, $try);
 
             if ($distance < $minScore) {
-                $guess = $sameLevelStep;
+                $guess = $try;
                 $minScore = $distance;
             }
         }
 
-        $notFoundMessage = sprintf('Unable to find configuration for "%s".', $originalNeed);
+        $message = sprintf('Unable to find configuration for "%s".', $originalNeed);
 
         if (isset($guess) && $minScore < 3) {
-            return new \LogicException(
-                sprintf("%s\n\nDid you mean \"%s\"?\n\n", $notFoundMessage, str_replace($search, $guess, $originalNeed))
+            $message .= \sprintf("\n\nDid you mean \"%s\"?\n\n", \str_replace($search, $guess, $originalNeed));
+        } else {
+            $message .= \sprintf(
+                "\n\nPossible values are:\n%s",
+                \implode(PHP_EOL, \array_map(function ($match) {
+                    return \sprintf('- %s', $match);
+                }, $possibleMatches))
             );
         }
 
-        return new \LogicException(
-            sprintf(
-                "Unable to find configuration for \"%s\".\n\nPossible values are:\n%s",
-                $originalNeed,
-                implode(PHP_EOL, array_map(function ($match) { return sprintf('- %s', $match); }, $possibleMatches))
-            )
-        );
+        return new \LogicException($message);
     }
 
     /**
@@ -188,7 +183,6 @@ class ConfigAccessor
      */
     private function findBundleExtension($path)
     {
-        $minScore = INF;
         $alias = $this->getExtensionAlias($path);
 
         foreach ($this->bundles as $bundle) {
@@ -201,11 +195,11 @@ class ConfigAccessor
             }
         }
 
-        throw $this->didYouMean($alias, $this->getAliasMap(), $path);
+        throw $this->didYouMean($alias, array_filter($this->getAliasMap()), $path);
     }
 
     /**
-     * Gets the container after compilation.
+     * Gets the container after compilate it.
      *
      * @return ContainerBuilder
      */
@@ -233,14 +227,14 @@ class ConfigAccessor
     /**
      * Gets all bundle extensions aliases.
      *
-     * @return string[] An array of aliases
+     * @return string[]
      */
     private function getAliasMap()
     {
         $cachedMap = $this->cache->getItem('aliasMap');
 
         if (!$cachedMap->isHit()) {
-            $cachedMap->set(array_map(function(Bundle $bundle) {
+            $cachedMap->set(\array_map(function (Bundle $bundle) {
                 if ($extension = $bundle->getContainerExtension()) {
                     return $extension->getAlias();
                 }
@@ -257,7 +251,7 @@ class ConfigAccessor
      *
      * @param string $path The configuration path (dot syntax)
      *
-     * @return
+     * @return string
      */
     private function getExtensionAlias($path)
     {
@@ -274,8 +268,14 @@ class ConfigAccessor
      *
      * @return array
      */
-    private function getSteps($path)
+    private function getSteps($path, $excludeAlias = false)
     {
-        return explode('.', $path);
+        $steps = \explode('.', $path);
+
+        if ($excludeAlias) {
+            unset($steps[0]);
+        }
+
+        return $steps;
     }
 }

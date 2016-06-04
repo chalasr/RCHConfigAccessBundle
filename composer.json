@@ -23,7 +23,7 @@
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "~2.0@dev",
-        "phpunit/phpunit": "^4.1|^5.0"
+        "phpunit/phpunit": "^4.5|^5.0"
     },
     "suggest": {
         "symfony/expression-language": "For injecting configuration values as service arguments"
