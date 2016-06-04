@@ -1,6 +1,10 @@
 RCHConfigAccessBundle
 =====================
 
+[![Build Status](https://travis-ci.org/chalasr/RCHConfigAccessBundle.svg?branch=master)](https://travis-ci.org/chalasr/RCHConfigAccessBundle)
+[![StyleCI](https://styleci.io/repos/58928191/shield)](https://styleci.io/repos/58928191)
+[![SensioLabsInsight](https://insight.sensiolabs.com/projects/6a39d33a-f93a-4016-95fb-cafd03ec2f3a/mini.png)](https://insight.sensiolabs.com/projects/6a39d33a-f93a-4016-95fb-cafd03ec2f3a)
+
 Retrieve final configuration values from any container-aware context.
 
 Why?
