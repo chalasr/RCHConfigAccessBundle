@@ -9,16 +9,16 @@
  * file that was distributed with this source code.
  */
 
-namespace RCH\ConfigAccessBundle\Tests\Services;
+namespace RCH\ConfigAccessBundle\Tests\Config;
 
 use RCH\ConfigAccessBundle\Tests\TestCase;
 
 /**
- * Tests the ConfigAccessor (main class of this bundle).
+ * Tests the Accessor (main class of this bundle).
  *
  * @author Robin Chalas <robin.chalas@gmail.com>
  */
-class ConfigAccessorTest extends TestCase
+class AccessorTest extends TestCase
 {
     protected function setUp()
     {

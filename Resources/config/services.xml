@@ -6,7 +6,7 @@
     >
 
     <services>
-        <service id="rch_config_access.accessor" class="RCH\ConfigAccessBundle\Services\ConfigAccessor">
+        <service id="rch_config_access.accessor" class="RCH\ConfigAccessBundle\Config\Accessor">
             <argument type="service" id="service_container"/>
             <argument type="expression">service('kernel').getBundles()</argument>
             <argument type="service" id="rch_config_access.cache"/>
