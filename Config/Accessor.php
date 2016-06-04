@@ -9,10 +9,9 @@
  * file that was distributed with this source code.
  */
 
-namespace RCH\ConfigAccessBundle\Services;
+namespace RCH\ConfigAccessBundle\Config;
 
 use Psr\Cache\CacheItemPoolInterface;
-use RCH\ConfigAccessBundle\Config\Dump;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
@@ -38,7 +37,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  *
  * @author Robin Chalas <robin.chalas@gmail.com>
  */
-class ConfigAccessor
+class Accessor
 {
     /** @var ContainerInterface */
     private $container;
