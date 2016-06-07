@@ -37,11 +37,11 @@ class Dump extends ArrayCollection
      * Gets a YAML representation of a Dump.
      *
      * @param Dump
-     * 
+     *
      * @return string
      */
     public static function toYaml(Dump $dump)
     {
         return Yaml::dump($dump->toArray());
-    }   
+    }
 }
