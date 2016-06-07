@@ -34,12 +34,14 @@ class Dump extends ArrayCollection
     }
 
     /**
-     * Gets YAML dump of configuration.
+     * Gets a YAML representation of a Dump.
      *
-     * @return
+     * @param Dump
+     * 
+     * @return string
      */
-    public function yaml()
+    public static function toYaml(Dump $dump)
     {
-        return Yaml::dump($this->elements);
-    }
+        return Yaml::dump($dump->toArray());
+    }   
 }
