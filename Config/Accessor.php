@@ -53,7 +53,7 @@ class Accessor
      * @param Bundle[]               $bundles
      * @param CacheItemPoolInterface $cache
      */
-    public function __construct($container, array $bundles, CacheItemPoolInterface $cache)
+    public function __construct(ContainerInterface $container, array $bundles, CacheItemPoolInterface $cache)
     {
         $this->container = $container;
         $this->bundles = $bundles;
@@ -125,8 +125,7 @@ class Accessor
         $configuration = $extension->getConfiguration($configs, $container);
         $resolvedConfigs = $container->getParameterBag()->resolveValue($configs);
 
-        $cachedDump->set(Dump::fromTree($configuration, $resolvedConfigs));
-        $this->cache->save($cachedDump);
+        $this->cache->save($cachedDump->set(Dump::fromTree($configuration, $resolvedConfigs)));
 
         return $cachedDump->get()->toArray();
     }
@@ -233,13 +232,13 @@ class Accessor
         $cachedMap = $this->cache->getItem('aliasMap');
 
         if (!$cachedMap->isHit()) {
-            $cachedMap->set(\array_map(function (Bundle $bundle) {
+            $aliasMap = \array_map(function (Bundle $bundle) {
                 if ($extension = $bundle->getContainerExtension()) {
                     return $extension->getAlias();
                 }
-            }, $this->bundles));
+            }, $this->bundles);
 
-            $this->cache->save($cachedMap);
+            $this->cache->save($cachedMap->set($aliasMap));
         }
 
         return $cachedMap->get();
