@@ -12,8 +12,8 @@
 namespace RCH\ConfigAccessBundle\Config;
 
 use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Component\DependencyInjection\ContainerAwareTrait as Container;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
@@ -39,8 +39,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  */
 class Accessor
 {
-    /** @var ContainerInterface */
-    private $container;
+    use Container;
 
     /** @var Bundle[] */
     private $bundles;
@@ -49,13 +48,11 @@ class Accessor
     private $cache;
 
     /**
-     * @param ContainerInterface     $container
      * @param Bundle[]               $bundles
      * @param CacheItemPoolInterface $cache
      */
-    public function __construct(ContainerInterface $container, array $bundles, CacheItemPoolInterface $cache)
+    public function __construct(array $bundles, CacheItemPoolInterface $cache)
     {
-        $this->container = $container;
         $this->bundles = $bundles;
         $this->cache = $cache;
     }
