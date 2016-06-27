@@ -7,9 +7,11 @@
 
     <services>
         <service id="rch_config_access.accessor" class="RCH\ConfigAccessBundle\Config\Accessor">
-            <argument type="service" id="service_container"/>
             <argument type="expression">service('kernel').getBundles()</argument>
             <argument type="service" id="rch_config_access.cache"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
         </service>
         <service id="rch_config_access.cache" public="false" class="Symfony\Component\Cache\Adapter\FilesystemAdapter">
             <argument type="string">rch_config_access</argument>
