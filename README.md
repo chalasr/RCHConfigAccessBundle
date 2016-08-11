@@ -56,14 +56,6 @@ Usage
 
 $accessor = $this->container->get('rch.config_access.accessor');
 
-// Find the current firewall
-foreach ($accessor->get('security.firewalls') as $firewall => $mapping) {
-    if (preg_match(sprintf('{%s}', $mapping['pattern']), $request->attributes->get('_route'))) {
-        // $name is the current firewall
-        break;
-    }
-}
-
 $accessor->get('security');
 // array('encoders' => array(...), 'providers' => array(...), ...)
 
