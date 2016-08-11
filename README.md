@@ -46,16 +46,6 @@ $bundles = array(
 );
 ```
 
-Configuration
---------------
-
-```yaml
-rch_config_access:
-    default_path: "%kernel.root_dir/config/"
-    custom_path:
-        - "@AppBundle/Resources/custom/"
-```
-
 Usage
 -----
 
